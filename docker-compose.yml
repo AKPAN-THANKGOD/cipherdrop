@@ -1,0 +1,11 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]   # memory only, nothing written to disk
+  app:
+    build: .
+    environment:
+      REDIS_URL: redis://redis:6379
+      TRUST_PROXY: "0"    # set to 1 behind a reverse proxy so rate limits see real client IPs
+    ports: ["3000:3000"]
+    depends_on: [redis]

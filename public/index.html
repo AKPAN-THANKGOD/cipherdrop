@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CipherDrop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#/">CipherDrop</a>
+  <nav>
+    <a href="#/" data-nav="create">New secret</a>
+    <a href="#/drops" data-nav="drops">Active drops <span class="count" id="dropCount">0</span></a>
+  </nav>
+  <span class="pill ok"><i></i>Encrypted in your browser</span>
+</header>
+
+<main>
+  <!-- Create -->
+  <section id="view-create" class="view">
+    <h1>Share secrets, not vulnerabilities.</h1>
+    <p class="lead">Your secret is encrypted on this device before it is sent. The decryption key stays in the link and never reaches the server.</p>
+    <form id="createForm" class="card" autocomplete="off">
+      <fieldset class="seg two"><legend class="label">What are you sharing?</legend>
+        <label><input type="radio" name="kind" value="text" checked><span>Text</span></label>
+        <label><input type="radio" name="kind" value="file"><span>File (up to 10 MB)</span></label>
+      </fieldset>
+      <label class="field" id="textField">
+        <span class="label">Secret</span>
+        <textarea id="secret" class="mono" rows="8" placeholder="Paste a password, API token or private note" required></textarea>
+        <span class="meta"><span id="bytes">0 bytes</span></span>
+      </label>
+      <div class="field" id="fileField" hidden>
+        <span class="label">File</span>
+        <input type="file" id="file">
+        <span class="meta" id="fileInfo">No file chosen</span>
+      </div>
+      <div class="row">
+        <label class="toggle"><input type="checkbox" id="burn" checked><span class="track"></span>
+          <span><b>Burn after reading</b><small>Deleted after the first successful decryption.</small></span></label>
+        <fieldset class="seg"><legend class="label">Expires after</legend>
+          <label><input type="radio" name="ttl" value="3600000" checked><span>1 hour</span></label>
+          <label><input type="radio" name="ttl" value="86400000"><span>24 hours</span></label>
+          <label><input type="radio" name="ttl" value="604800000"><span>7 days</span></label>
+        </fieldset>
+      </div>
+      <label class="field">
+        <span class="label">Passphrase <em>(optional)</em></span>
+        <span class="inline"><input id="pass" type="password" placeholder="Add a second factor, shared separately">
+        <button type="button" class="ghost" id="genPass">Generate</button></span>
+      </label>
+      <p class="error" id="createError" role="alert" hidden></p>
+      <button class="primary" type="submit">Encrypt and create link</button>
+    </form>
+  </section>
+
+  <!-- Generated -->
+  <section id="view-done" class="view" hidden>
+    <span class="pill ok"><i></i>Encrypted and sealed</span>
+    <h1>Your secret link is ready.</h1>
+    <div class="split">
+      <div class="stack">
+        <div class="card">
+          <span class="label">One-time link</span>
+          <div class="inline"><code class="mono key" id="shareLink"></code><button class="primary" id="copyLink">Copy link</button></div>
+          <p class="note">The highlighted part is the decryption key. It stays in the link and is never sent to the server. Without it, the stored data cannot be read.</p>
+        </div>
+        <div class="card warn-card" id="selfOpenWarn"><b>Don't open this link yourself.</b><span>It deletes the secret the moment it is decrypted. Send it to the recipient first.</span></div>
+      </div>
+      <aside class="card side">
+        <h2>Summary</h2>
+        <dl>
+          <div><dt>Burn policy</dt><dd id="sumBurn"></dd></div>
+          <div><dt>Expires in</dt><dd id="sumExpiry"></dd></div>
+          <div><dt>Passphrase</dt><dd id="sumPass"></dd></div>
+          <div><dt>Payload size</dt><dd id="sumSize"></dd></div>
+          <div><dt>Cipher</dt><dd>AES-256-GCM</dd></div>
+        </dl>
+        <span class="label">Ciphertext fingerprint (SHA-256)</span>
+        <code class="mono fp" id="fingerprint"></code>
+        <button class="danger" id="destroyNow">Destroy secret now</button>
+        <a class="secondary btn" href="#/">Create another secret</a>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Drops -->
+  <section id="view-drops" class="view" hidden>
+    <h1>Active drops</h1>
+    <p class="lead">Drops created from this browser. Links are not stored, so copy them when you create a drop.</p>
+    <div class="inline toolbar"><a class="primary btn" href="#/">New secret</a><button class="danger" id="burnAll">Burn all active drops</button></div>
+    <p class="meta" id="dropStats"></p>
+    <div class="card list" id="dropList"></div>
+  </section>
+
+  <!-- Decrypt -->
+  <section id="view-open" class="view" hidden>
+    <h1 id="openTitle">Open secret</h1>
+    <div class="card" id="openCard"></div>
+  </section>
+</main>
+
+<footer>AES-256-GCM in your browser · PBKDF2 passphrase layer · No accounts, no tracking</footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>
