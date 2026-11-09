@@ -46,6 +46,7 @@ Redis runs with persistence off, so nothing is written to disk.
 
 - Files up to 10 MB, text up to 100 KB.
 - Rate limits per IP on creating and opening drops.
+- 50 MB of uploads per client per 24 hours. Only a salted hash of the IP is kept, and it expires after 24 hours.
 
 ## Project layout
 
@@ -62,4 +63,19 @@ Dockerfile, docker-compose.yml
   page before saving the secret cannot get it back.
 - The "Active drops" list is stored in the creator's browser only.
 - Passphrases use PBKDF2, not Argon2id.
-- There are no per-IP storage quotas yet.
+
+## Deploy on a server with HTTPS
+
+You need a server with Docker, a domain name, and ports 80 and 443 open.
+
+1. Point a DNS `A` record for your domain at the server's IP address.
+2. Copy `.env.example` to `.env` and set `DOMAIN` to your domain.
+3. Start everything:
+
+```
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Caddy gets and renews the HTTPS certificate automatically. Redis and the app are not
+exposed to the internet, and access logs are turned off. To update later:
+`git pull`, then run the same command again.

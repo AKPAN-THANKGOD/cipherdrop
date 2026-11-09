@@ -26,6 +26,8 @@ function makeMemoryStore() {
     async hget(k, f) { return (await s.hmget(k, f))[0]; },
     async hincrby(k, f, n) { const e = live(k); if (!e) return n; e.f[f] = String((+e.f[f] || 0) + n); return +e.f[f]; },
     async del(k) { return m.delete(k) ? 1 : 0; },
+    async incrby(k, n) { let e = live(k); if (!e) { e = { f: { v: '0' }, exp: 0 }; m.set(k, e); } e.f.v = String(+e.f.v + n); return +e.f.v; },
+    async ping() { return 'PONG'; },
     async openDrop(k) { const e = live(k); if (!e) return null; if (e.f.burn === '1') m.delete(k); return e.f.blob; },
     multi() {
       const ops = [];
@@ -42,6 +44,8 @@ function makeMemoryStore() {
 const app = Fastify({ logger: false, bodyLimit: 16 * 1024 * 1024, trustProxy: process.env.TRUST_PROXY === '1' });
 
 const TTLS = new Set([3600, 86400, 604800]), MAX_BLOB = 14500000, MAX_TRIES = 5;
+const QUOTA = 50 * 1024 * 1024;       // bytes a single client may upload per 24 hours
+const SALT = crypto.randomBytes(16);  // random per boot, so quota keys cannot be traced back to an IP
 const B64U = /^[A-Za-z0-9_-]+$/;
 const sha = s => crypto.createHash('sha256').update(s).digest();
 const rnd = n => crypto.randomBytes(n).toString('base64url');
@@ -75,12 +79,19 @@ const gone = reply => reply.code(404).send({ error: 'Not found' });
   await app.register(require('@fastify/rate-limit'), { max: 120, timeWindow: '1 minute' });
   await app.register(require('@fastify/static'), { root: path.join(__dirname, 'public') });
 
+  app.get('/health', async () => { await redis.ping(); return { ok: true }; });
+
   app.post('/api/drops', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const b = req.body || {}, hasPass = b.hasPass === true;
     if (typeof b.blob !== 'string' || !b.blob || b.blob.length > MAX_BLOB || !B64U.test(b.blob) || !TTLS.has(b.ttl) ||
         (hasPass && !(validB64(b.salt, 22) && validB64(b.verifier, 43)))) {
       return reply.code(400).send({ error: 'Invalid request' });
     }
+    // Per-client daily upload quota. Only a salted hash is kept, and it expires after 24 hours.
+    const qk = 'quota:' + crypto.createHash('sha256').update(SALT).update(req.ip).digest('hex').slice(0, 32);
+    const used = await redis.incrby(qk, b.blob.length);
+    if (used === b.blob.length) await redis.expire(qk, 86400);
+    if (used > QUOTA) return reply.code(429).send({ error: 'Daily upload limit reached' });
     const id = rnd(12), burnToken = rnd(16), k = dropKey(id);
     await redis.multi()
       .hset(k, {

@@ -125,7 +125,7 @@ $('createForm').addEventListener('submit', async e => {
       : pack({ kind: 'text' }, enc.encode(text));
     const { blob, keyStr, salt, verifier } = await encryptSecret(payload, pass);
     const r = await api.create({ blob, burn: $('burn').checked, ttl: ttl / 1000, hasPass: !!pass, salt, verifier });
-    if (!r.ok) throw new Error(r.status === 429 ? 'too many requests, wait a minute' : 'server error ' + r.status);
+    if (!r.ok) throw new Error(r.status === 429 ? 'you have reached the upload limit, try again later' : 'server error ' + r.status);
     const { id, burnToken, expiresAt } = r.body, rec = { id, burn: $('burn').checked, hasPass: !!pass, expiresAt };
     meta.add({ id, burnToken, burn: rec.burn, hasPass: rec.hasPass, createdAt: Date.now(), expiresAt });
     const prefix = `${location.origin}${location.pathname}#/d/${id}.`, link = prefix + keyStr;
