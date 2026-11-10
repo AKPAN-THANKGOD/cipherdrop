@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: cipherdrop
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: TRUST_PROXY
+        value: "1"
